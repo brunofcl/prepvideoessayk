@@ -32,11 +32,27 @@
     .toggle{ display:inline-flex; gap:10px; align-items:center; padding:8px 10px; border:1px solid rgba(255,255,255,0.12); border-radius:12px; }
     .toggle input{ accent-color:var(--accent); width:18px; height:18px }
     .status{ font-size:14px; color:var(--muted) }
+
+    /* === Stage & typography tweaks === */
     .stage{
-      text-align:center; padding:36px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px dashed rgba(255,255,255,0.1);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      min-height: 200px;
+      text-align:center; padding:36px 16px; border-radius:12px;
+      background:rgba(255,255,255,0.03); border:1px dashed rgba(255,255,255,0.1);
     }
-    .question{ font-size: clamp(18px, 2.6vw, 22px); line-height:1.35; margin:8px auto 4px; max-width:46ch }
-    .timer{ font-variant-numeric: tabular-nums; font-size: clamp(36px, 6vw, 56px); font-weight:800; margin: 8px 0 0 }
+    .question{
+      font-size: clamp(22px, 3.4vw, 34px); /* bigger */
+      line-height:1.4; margin:8px auto 4px; max-width:60ch;
+      display:block;
+    }
+    .timer{
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(18px, 3vw, 28px); /* slightly bigger */
+      font-weight:700;
+      margin: 8px 0 12px;
+      color: var(--muted);
+      text-align:center;
+    }
     .phase{ text-transform:uppercase; letter-spacing: .16em; font-size:12px; color:var(--muted)}
     .pill{ display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(124,172,248,.12); color:#cfe0ff; font-weight:600; font-size:12px }
     .danger{ color:var(--danger) }
@@ -53,8 +69,8 @@
 <body>
   <div class="app">
     <div class="card" id="screen-setup">
-      <h1>Kellogg Video Essay Practice (No Recording)</h1>
-      <p class="sub">Mimics the Kira flow: <strong>20s prep</strong> → <strong>60s answer</strong>, 3 random questions (or single). Nothing is recorded.</p>
+      <h1>Kellogg Video Essay Practice</h1>
+      <p class="sub"></p>
       <div class="row" style="margin:8px 0 16px">
         <label class="toggle"><input type="checkbox" id="singleMode"> Single question only</label>
         <span class="status">Default: session of 3.</span>
@@ -67,7 +83,7 @@
         <textarea id="questionEditor"></textarea>
         <div class="foot">
           <button class="btn" id="saveQuestions">Save Questions</button>
-          <span class="muted">Tip: Press <span class="kbd">Enter</span> to start from the main screen.</span>
+          <span class="muted">Tip: Press <span class="kbd">Tab</span> to start from the main screen.</span>
         </div>
       </details>
     </div>
@@ -76,14 +92,19 @@
       <div class="row">
         <div class="pill" id="pillProgress">Question 1 of 3</div>
         <span class="spacer"></span>
-        <button class="btn ghost" id="abortBtn">Abort</button>
+        <button class="btn ghost" id="quitBtn">Quit</button>
       </div>
-      <div class="stage" style="margin-top:16px">
+
+      <!-- Timer above the question box -->
+      <div class="timer" id="timer">00:20</div>
+
+      <!-- Question box -->
+      <div class="stage" style="margin-top:8px">
         <div class="phase" id="phase">Get Ready</div>
         <div class="question" id="questionText">—</div>
-        <div class="timer" id="timer">00:20</div>
       </div>
-      <p class="sub" id="hint" style="margin-top:12px">Prep time. Think of structure (STAR). Recording is <strong>not</strong> happening.</p>
+
+      <p class="sub" id="hint" style="margin-top:12px"></p>
     </div>
 
     <div class="card" id="screen-end" style="display:none">
@@ -93,29 +114,39 @@
       <div class="grid" id="resultsGrid"></div>
       <div class="foot">
         <button class="btn primary" id="restartBtn">Start New Practice</button>
-        <span class="muted">Keyboard: <span class="kbd">Enter</span> can start from the home screen.</span>
+        <span class="muted">Keyboard: <span class="kbd">Tab</span> can start from the home screen.</span>
       </div>
     </div>
   </div>
 
   <script>
   ;(() => {
-    // ======== Configuration (kept simple) ========
+    // ======== Configuration ========
     const PREP_SECONDS = 20;
     const ANSWER_SECONDS = 60;
     const DEFAULT_SESSION_COUNT = 3;
 
     const DEFAULT_QUESTIONS = [
-      "Tell me about a time you led without formal authority.",
-      "Describe a situation where you persuaded a skeptical stakeholder.",
-      "Share a conflict on a team and how you handled it.",
-      "What is a significant professional failure and what changed afterward?",
-      "Tell me about a time you made a decision with incomplete data.",
-      "Describe a time you received feedback you disagreed with.",
-      "How did you balance competing priorities under tight deadlines?",
-      "Tell me about a time you adapted to unexpected change.",
-      "Share a time you mentored or developed someone else.",
-      "Describe impact you drove outside your formal role."
+      "Tell us about a time you took a risk. What did you learn?",
+      "Tell us about a time you experienced a professional failure. What did you learn from it?",
+      "Tell us about a conflict you have had with your boss/with a team at work. How did you manage to resolve it?",
+      "What accomplishment are you proudest of?",
+      "Tell us about an organization or activity to which you have devoted a significant amount of time. Why was it meaningful to you?",
+      "What will your classmates be most surprised to learn about you?",
+      "What’s the best piece of advice you have ever received that you also shared with other people? / What is the most important feedback you’ve ever received?",
+      "Tell us about a time you worked with diversity in the workplace.",
+      "Tell us about a time you contributed to improving a process in your organization.",
+      "Tell us about a time you solved a problem in a creative way.",
+      "Tell us about a time when you faced a conflict on a team that affected its productivity. How did you face it?",
+      "Tell us about a positive impact that you made. Why was it important to you?",
+      "Whose leadership style do you admire and why?",
+      "Tell us about a time you contributed to your company or community.",
+      "Tell us about a time you created a good environment in your personal or professional life.",
+      "What’s the biggest misperception co-workers might have about you?",
+      "Tell us about a time when you had to reshape a strategy due to a sudden change in the scenario.",
+      "Tell us about a relationship you leveraged to reach your goals and how you did it.",
+      "Tell us about a time when you had to deliver a tough task at the last minute.",
+      "Tell us about a time when you solved a problem in a creative way."
     ];
 
     // ======== DOM ========
@@ -127,7 +158,7 @@
     };
     const startBtn = el('startBtn');
     const singleMode = el('singleMode');
-    const abortBtn = el('abortBtn');
+    const quitBtn = el('quitBtn');
     const restartBtn = el('restartBtn');
     const pillProgress = el('pillProgress');
     const questionText = el('questionText');
@@ -164,7 +195,6 @@
       screens[screen].style.display = 'block';
     }
 
-    // Fisher–Yates shuffle
     function shuffle(arr){
       const a = [...arr];
       for(let i=a.length-1;i>0;i--){
@@ -195,13 +225,12 @@
       const q = sessionQuestions[idx];
       questionText.textContent = q || '…';
       phase.textContent = 'Prep';
-      hint.innerHTML = 'Prep time. Think structure: <strong>Situation → Task → Action → Result</strong>.';
+      hint.innerHTML = '';
       startCountdown(PREP_SECONDS, () => {
         phase.textContent = 'Answer';
-        hint.innerHTML = 'Answer time. Speak clearly; finish with your <strong>result/learning</strong>.';
+        hint.innerHTML = '';
         startCountdown(ANSWER_SECONDS, () => {
           asked.push({ q: q, when: new Date().toLocaleString() });
-          // Between-questions interstitial (2s), then move on or end.
           interstitial(() => {
             if(idx < sessionQuestions.length - 1){
               idx++;
@@ -273,19 +302,19 @@
       }
     }
 
-    function abortSession(){
+    function quitSession(){
       clearInterval(interval);
       asked = [];
       timer.textContent = '00:00';
       show('setup');
-      flash(startBtn, 'Aborted', 1000);
+      flash(startBtn, 'Quit', 1000);
     }
 
     function flash(node, text, ms=1200){
-      const prev = hint.textContent;
-      const old = hint.innerHTML;
-      hint.textContent = text;
-      setTimeout(()=>{ hint.innerHTML = old; }, ms);
+      if(!node) return;
+      const originalHTML = node.innerHTML;
+      node.textContent = text;
+      setTimeout(()=>{ node.innerHTML = originalHTML; }, ms);
     }
 
     function escapeHtml(str){
@@ -294,12 +323,12 @@
 
     // ======== Events ========
     startBtn.addEventListener('click', startSession);
-    abortBtn.addEventListener('click', abortSession);
+    quitBtn.addEventListener('click', quitSession);
     restartBtn.addEventListener('click', () => { show('setup'); });
 
-    // Keyboard: Enter starts from setup screen
+    // Keyboard: Tab starts from setup screen
     document.addEventListener('keydown', (e) => {
-      if(e.key === 'Enter'){
+      if(e.key === 'Tab'){
         if(screens.setup.style.display !== 'none'){
           e.preventDefault();
           startSession();
@@ -307,7 +336,6 @@
       }
     });
 
-    // Start on setup
     show('setup');
   })();
   </script>
