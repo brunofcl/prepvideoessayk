@@ -41,13 +41,13 @@
       background:rgba(255,255,255,0.03); border:1px dashed rgba(255,255,255,0.1);
     }
     .question{
-      font-size: clamp(22px, 3.4vw, 34px); /* bigger */
+      font-size: clamp(22px, 3.4vw, 34px);
       line-height:1.4; margin:8px auto 4px; max-width:60ch;
       display:block;
     }
     .timer{
       font-variant-numeric: tabular-nums;
-      font-size: clamp(18px, 3vw, 28px); /* slightly bigger */
+      font-size: clamp(18px, 3vw, 28px); /* slightly bigger per your request */
       font-weight:700;
       margin: 8px 0 12px;
       color: var(--muted);
@@ -73,6 +73,7 @@
       <p class="sub"></p>
       <div class="row" style="margin:8px 0 16px">
         <label class="toggle"><input type="checkbox" id="singleMode"> Single question only</label>
+        <label class="toggle"><input type="checkbox" id="startWithCV"> Start with "not on CV" question</label>
         <span class="status">Default: session of 3.</span>
         <span class="spacer"></span>
         <button class="btn primary" id="startBtn">Start Practice</button>
@@ -119,225 +120,244 @@
     </div>
   </div>
 
-  <script>
-  ;(() => {
-    // ======== Configuration ========
-    const PREP_SECONDS = 20;
-    const ANSWER_SECONDS = 60;
-    const DEFAULT_SESSION_COUNT = 3;
+<script>
+;(() => {
+  // ======== Configuration ========
+  const PREP_SECONDS = 20;
+  const ANSWER_SECONDS = 60;
+  const DEFAULT_SESSION_COUNT = 3;
 
-    const DEFAULT_QUESTIONS = [
-      "Tell us about a time you took a risk. What did you learn?",
-      "Tell us about a time you experienced a professional failure. What did you learn from it?",
-      "Tell us about a conflict you have had with your boss/with a team at work. How did you manage to resolve it?",
-      "What accomplishment are you proudest of?",
-      "Tell us about an organization or activity to which you have devoted a significant amount of time. Why was it meaningful to you?",
-      "What will your classmates be most surprised to learn about you?",
-      "What’s the best piece of advice you have ever received that you also shared with other people? / What is the most important feedback you’ve ever received?",
-      "Tell us about a time you worked with diversity in the workplace.",
-      "Tell us about a time you contributed to improving a process in your organization.",
-      "Tell us about a time you solved a problem in a creative way.",
-      "Tell us about a time when you faced a conflict on a team that affected its productivity. How did you face it?",
-      "Tell us about a positive impact that you made. Why was it important to you?",
-      "Whose leadership style do you admire and why?",
-      "Tell us about a time you contributed to your company or community.",
-      "Tell us about a time you created a good environment in your personal or professional life.",
-      "What’s the biggest misperception co-workers might have about you?",
-      "Tell us about a time when you had to reshape a strategy due to a sudden change in the scenario.",
-      "Tell us about a relationship you leveraged to reach your goals and how you did it.",
-      "Tell us about a time when you had to deliver a tough task at the last minute.",
-      "Tell us about a time when you solved a problem in a creative way."
-    ];
+  const FIXED_CV_QUESTION =
+    "Please introduce yourself and tell us something that is not on your CV that you want us to know about you";
 
-    // ======== DOM ========
-    const el = (id) => document.getElementById(id);
-    const screens = {
-      setup: el('screen-setup'),
-      session: el('screen-session'),
-      end: el('screen-end')
-    };
-    const startBtn = el('startBtn');
-    const singleMode = el('singleMode');
-    const quitBtn = el('quitBtn');
-    const restartBtn = el('restartBtn');
-    const pillProgress = el('pillProgress');
-    const questionText = el('questionText');
-    const timer = el('timer');
-    const phase = el('phase');
-    const hint = el('hint');
-    const resultsGrid = el('resultsGrid');
+  const DEFAULT_QUESTIONS = [
+    "Tell us about a time you took a risk. What did you learn?",
+    "Tell us about a time you experienced a professional failure. What did you learn from it?",
+    "Tell us about a conflict you have had with your boss/with a team at work. How did you manage to resolve it?",
+    "What accomplishment are you proudest of?",
+    "Tell us about an organization or activity to which you have devoted a significant amount of time. Why was it meaningful to you?",
+    "What will your classmates be most surprised to learn about you?",
+    "What’s the best piece of advice you have ever received that you also shared with other people? / What is the most important feedback you’ve ever received?",
+    "Tell us about a time you worked with diversity in the workplace.",
+    "Tell us about a time you contributed to improving a process in your organization.",
+    "Tell us about a time you solved a problem in a creative way.",
+    "Tell us about a time when you faced a conflict on a team that affected its productivity. How did you face it?",
+    "Tell us about a positive impact that you made. Why was it important to you?",
+    "Whose leadership style do you admire and why?",
+    "Tell us about a time you contributed to your company or community.",
+    "Tell us about a time you created a good environment in your personal or professional life.",
+    "What’s the biggest misperception co-workers might have about you?",
+    "Tell us about a time when you had to reshape a strategy due to a sudden change in the scenario.",
+    "Tell us about a relationship you leveraged to reach your goals and how you did it.",
+    "Tell us about a time when you had to deliver a tough task at the last minute.",
+    "Tell us about a time when you solved a problem in a creative way."
+  ];
 
-    const questionEditor = el('questionEditor');
-    const saveQuestionsBtn = el('saveQuestions');
+  // ======== DOM ========
+  const el = (id) => document.getElementById(id);
+  const screens = {
+    setup: el('screen-setup'),
+    session: el('screen-session'),
+    end: el('screen-end')
+  };
+  const startBtn = el('startBtn');
+  const singleMode = el('singleMode');
+  const startWithCV = el('startWithCV'); // may be null if markup not added yet
+  const quitBtn = el('quitBtn');
+  const restartBtn = el('restartBtn');
+  const pillProgress = el('pillProgress');
+  const questionText = el('questionText');
+  const timer = el('timer');
+  const phase = el('phase');
+  const hint = el('hint');
+  const resultsGrid = el('resultsGrid');
 
-    // ======== State ========
-    let allQuestions = [...DEFAULT_QUESTIONS];
-    let sessionQuestions = [];
-    let asked = [];
-    let idx = 0;
-    let interval = null;
-    let remaining = 0;
+  const questionEditor = el('questionEditor');
+  const saveQuestionsBtn = el('saveQuestions');
 
-    // Load editor with defaults
-    questionEditor.value = DEFAULT_QUESTIONS.join('\n');
+  // ======== State ========
+  let allQuestions = [...DEFAULT_QUESTIONS];
+  let sessionQuestions = [];
+  let asked = [];
+  let idx = 0;
+  let interval = null;
+  let remaining = 0;
 
-    function saveCustomQuestions(){
-      const raw = questionEditor.value.trim();
-      const list = raw.split(/\n+/).map(s=>s.trim()).filter(Boolean);
-      allQuestions = list.length ? list : [...DEFAULT_QUESTIONS];
-      flash(hint, `Saved ${allQuestions.length} questions.`, 1600);
+  // Load editor with defaults
+  if (questionEditor) questionEditor.value = DEFAULT_QUESTIONS.join('\n');
+
+  function saveCustomQuestions(){
+    if (!questionEditor) return;
+    const raw = questionEditor.value.trim();
+    const list = raw.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+    allQuestions = list.length ? list : [...DEFAULT_QUESTIONS];
+    flash(hint, `Saved ${allQuestions.length} questions.`, 1600);
+  }
+
+  if (saveQuestionsBtn) saveQuestionsBtn.addEventListener('click', saveCustomQuestions);
+
+  function show(screen){
+    Object.values(screens).forEach(s => s && (s.style.display = 'none'));
+    if (screens[screen]) screens[screen].style.display = 'block';
+  }
+
+  // Fisher–Yates shuffle
+  function shuffle(arr){
+    const a = [...arr];
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
     }
+    return a;
+  }
 
-    saveQuestionsBtn.addEventListener('click', saveCustomQuestions);
+  function startSession(){
+    asked = [];
+    idx = 0;
 
-    function show(screen){
-      Object.values(screens).forEach(s => s.style.display = 'none');
-      screens[screen].style.display = 'block';
-    }
+    const wantsSingle = !!singleMode?.checked;
+    const forceCV = !!startWithCV?.checked;
+    const count = wantsSingle ? 1 : DEFAULT_SESSION_COUNT;
 
-    function shuffle(arr){
-      const a = [...arr];
-      for(let i=a.length-1;i>0;i--){
-        const j = Math.floor(Math.random()*(i+1));
-        [a[i],a[j]] = [a[j],a[i]];
-      }
-      return a;
-    }
-
-    function startSession(){
-      asked = [];
-      idx = 0;
-      const wantsSingle = singleMode.checked;
-      const count = wantsSingle ? 1 : DEFAULT_SESSION_COUNT;
+    if (forceCV) {
+      const restPool = allQuestions.filter(q => q.trim() !== FIXED_CV_QUESTION);
+      const restShuffled = shuffle(restPool);
+      const restNeeded = Math.max(0, count - 1);
+      sessionQuestions = [FIXED_CV_QUESTION, ...restShuffled.slice(0, restNeeded)];
+    } else {
       sessionQuestions = shuffle(allQuestions).slice(0, count);
-      updateProgress();
-      show('session');
-      nextQuestion();
     }
 
-    function updateProgress(){
-      const total = sessionQuestions.length || (singleMode.checked ? 1 : DEFAULT_SESSION_COUNT);
-      pillProgress.textContent = `Question ${Math.min(idx+1,total)} of ${total}`;
-    }
+    updateProgress();
+    show('session');
+    nextQuestion();
+  }
 
-    function nextQuestion(){
-      updateProgress();
-      const q = sessionQuestions[idx];
-      questionText.textContent = q || '…';
-      phase.textContent = 'Prep';
+  function updateProgress(){
+    const total = sessionQuestions.length || (singleMode?.checked ? 1 : DEFAULT_SESSION_COUNT);
+    pillProgress.textContent = `Question ${Math.min(idx+1,total)} of ${total}`;
+  }
+
+  function nextQuestion(){
+    updateProgress();
+    const q = sessionQuestions[idx];
+    questionText.textContent = q || '…';
+    phase.textContent = 'Prep';
+    hint.innerHTML = '';
+    startCountdown(PREP_SECONDS, () => {
+      phase.textContent = 'Answer';
       hint.innerHTML = '';
-      startCountdown(PREP_SECONDS, () => {
-        phase.textContent = 'Answer';
-        hint.innerHTML = '';
-        startCountdown(ANSWER_SECONDS, () => {
-          asked.push({ q: q, when: new Date().toLocaleString() });
-          interstitial(() => {
-            if(idx < sessionQuestions.length - 1){
-              idx++;
-              nextQuestion();
-            } else {
-              finishSession();
-            }
-          });
+      startCountdown(ANSWER_SECONDS, () => {
+        asked.push({ q: q, when: new Date().toLocaleString() });
+        interstitial(() => {
+          if(idx < sessionQuestions.length - 1){
+            idx++;
+            nextQuestion();
+          } else {
+            finishSession();
+          }
         });
       });
-    }
-
-    function startCountdown(seconds, onDone){
-      clearInterval(interval);
-      remaining = seconds;
-      renderTime(remaining);
-      interval = setInterval(() => {
-        remaining--;
-        renderTime(remaining);
-        if(remaining <= 0){
-          clearInterval(interval);
-          onDone && onDone();
-        }
-      }, 1000);
-    }
-
-    function renderTime(s){
-      const mm = String(Math.floor(s/60)).padStart(2,'0');
-      const ss = String(s%60).padStart(2,'0');
-      timer.textContent = `${mm}:${ss}`;
-      if(s <= 5){ timer.classList.add('danger'); } else { timer.classList.remove('danger'); }
-    }
-
-    function interstitial(next){
-      phase.textContent = 'Next question coming…';
-      hint.textContent = 'Shake it off. Quick reset.';
-      let s = 2;
-      renderTime(s);
-      clearInterval(interval);
-      interval = setInterval(()=>{
-        s--; renderTime(s);
-        if(s<=0){ clearInterval(interval); next(); }
-      }, 1000);
-    }
-
-    function finishSession(){
-      clearInterval(interval);
-      buildResults();
-      show('end');
-    }
-
-    function buildResults(){
-      resultsGrid.innerHTML = '';
-      asked.forEach((item, i) => {
-        const div = document.createElement('div');
-        div.className = 'tile';
-        div.innerHTML = `
-          <div class="muted" style="font-size:12px; text-transform:uppercase; letter-spacing:.14em">Question ${i+1}</div>
-          <div style="margin:6px 0 8px; font-weight:600">${escapeHtml(item.q)}</div>
-          <div class="muted" style="font-size:12px">Practiced: ${item.when}</div>
-        `;
-        resultsGrid.appendChild(div);
-      });
-      if(asked.length === 0){
-        const empty = document.createElement('div');
-        empty.className = 'tile';
-        empty.innerHTML = '<div class="muted">No questions recorded for this session.</div>';
-        resultsGrid.appendChild(empty);
-      }
-    }
-
-    function quitSession(){
-      clearInterval(interval);
-      asked = [];
-      timer.textContent = '00:00';
-      show('setup');
-      flash(startBtn, 'Quit', 1000);
-    }
-
-    function flash(node, text, ms=1200){
-      if(!node) return;
-      const originalHTML = node.innerHTML;
-      node.textContent = text;
-      setTimeout(()=>{ node.innerHTML = originalHTML; }, ms);
-    }
-
-    function escapeHtml(str){
-      return str.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
-    }
-
-    // ======== Events ========
-    startBtn.addEventListener('click', startSession);
-    quitBtn.addEventListener('click', quitSession);
-    restartBtn.addEventListener('click', () => { show('setup'); });
-
-    // Keyboard: Tab starts from setup screen
-    document.addEventListener('keydown', (e) => {
-      if(e.key === 'Tab'){
-        if(screens.setup.style.display !== 'none'){
-          e.preventDefault();
-          startSession();
-        }
-      }
     });
+  }
 
+  function startCountdown(seconds, onDone){
+    clearInterval(interval);
+    remaining = seconds;
+    renderTime(remaining);
+    interval = setInterval(() => {
+      remaining--;
+      renderTime(remaining);
+      if(remaining <= 0){
+        clearInterval(interval);
+        onDone && onDone();
+      }
+    }, 1000);
+  }
+
+  function renderTime(s){
+    const mm = String(Math.floor(s/60)).padStart(2,'0');
+    const ss = String(s%60).padStart(2,'0');
+    timer.textContent = `${mm}:${ss}`;
+    if(s <= 5){ timer.classList.add('danger'); } else { timer.classList.remove('danger'); }
+  }
+
+  function interstitial(next){
+    phase.textContent = 'Next question coming…';
+    hint.textContent = 'Shake it off. Quick reset.';
+    let s = 2;
+    renderTime(s);
+    clearInterval(interval);
+    interval = setInterval(()=>{
+      s--; renderTime(s);
+      if(s<=0){ clearInterval(interval); next(); }
+    }, 1000);
+  }
+
+  function finishSession(){
+    clearInterval(interval);
+    buildResults();
+    show('end');
+  }
+
+  function buildResults(){
+    resultsGrid.innerHTML = '';
+    asked.forEach((item, i) => {
+      const div = document.createElement('div');
+      div.className = 'tile';
+      div.innerHTML = `
+        <div class="muted" style="font-size:12px; text-transform:uppercase; letter-spacing:.14em">Question ${i+1}</div>
+        <div style="margin:6px 0 8px; font-weight:600">${escapeHtml(item.q)}</div>
+        <div class="muted" style="font-size:12px">Practiced: ${item.when}</div>
+      `;
+      resultsGrid.appendChild(div);
+    });
+    if(asked.length === 0){
+      const empty = document.createElement('div');
+      empty.className = 'tile';
+      empty.innerHTML = '<div class="muted">No questions recorded for this session.</div>';
+      resultsGrid.appendChild(empty);
+    }
+  }
+
+  function quitSession(){
+    clearInterval(interval);
+    asked = [];
+    timer.textContent = '00:00';
     show('setup');
-  })();
-  </script>
+    flash(startBtn, 'Quit', 1000);
+  }
+
+  function flash(node, text, ms=1200){
+    if(!node) return;
+    const originalHTML = node.innerHTML;
+    node.textContent = text;
+    setTimeout(()=>{ node.innerHTML = originalHTML; }, ms);
+  }
+
+  function escapeHtml(str){
+    return str.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+  }
+
+  // ======== Events (guarded) ========
+  if (startBtn) startBtn.addEventListener('click', startSession);
+  if (quitBtn) quitBtn.addEventListener('click', quitSession);
+  if (restartBtn) restartBtn.addEventListener('click', () => { show('setup'); });
+
+  // Keyboard: Tab starts from setup screen
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Tab'){
+      if(screens.setup && screens.setup.style.display !== 'none'){
+        e.preventDefault();
+        startSession();
+      }
+    }
+  });
+
+  // Start on setup
+  show('setup');
+})();
+</script>
+
 </body>
 </html>
