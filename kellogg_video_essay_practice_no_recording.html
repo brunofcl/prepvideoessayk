@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kellogg Video Essay Practice</title>
+  <style>
+    :root{
+      --bg:#0b0d10;--card:#12151a;--ink:#e8ecf1;--muted:#97a1ad;--accent:#7cacf8;--warn:#f5b73b;--danger:#ff6b6b;--ok:#3ddc97;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--ink); background: radial-gradient(1200px 800px at 20% -10%, #1b2130 0%, #0b0d10 60%);
+      min-height:100dvh; display:grid; place-items:center; padding:24px;
+    }
+    .app{ width: min(860px, 100%); }
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)), var(--card);
+      border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,0.35);
+    }
+    h1{font-size: clamp(22px, 3vw, 28px); margin:0 0 6px 0}
+    p.sub{color:var(--muted); margin:0 0 18px}
+    .row{display:flex; gap:12px; flex-wrap:wrap; align-items:center}
+    .spacer{flex:1}
+    .btn{
+      appearance:none; border:1px solid rgba(255,255,255,0.14); background:#1a2232; color:var(--ink); padding:12px 16px; border-radius:12px; cursor:pointer; font-weight:600;
+    }
+    .btn:hover{filter:brightness(1.08)}
+    .btn.primary{ background:linear-gradient(180deg, #4d77ff, #3c64eb); border-color:#5774ff; }
+    .btn.ghost{ background:transparent }
+    .toggle{ display:inline-flex; gap:10px; align-items:center; padding:8px 10px; border:1px solid rgba(255,255,255,0.12); border-radius:12px; }
+    .toggle input{ accent-color:var(--accent); width:18px; height:18px }
+    .status{ font-size:14px; color:var(--muted) }
+    .stage{
+      text-align:center; padding:36px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px dashed rgba(255,255,255,0.1);
+    }
+    .question{ font-size: clamp(18px, 2.6vw, 22px); line-height:1.35; margin:8px auto 4px; max-width:46ch }
+    .timer{ font-variant-numeric: tabular-nums; font-size: clamp(36px, 6vw, 56px); font-weight:800; margin: 8px 0 0 }
+    .phase{ text-transform:uppercase; letter-spacing: .16em; font-size:12px; color:var(--muted)}
+    .pill{ display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(124,172,248,.12); color:#cfe0ff; font-weight:600; font-size:12px }
+    .danger{ color:var(--danger) }
+    .grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:12px }
+    .tile{ padding:16px; border:1px solid rgba(255,255,255,0.1); border-radius:12px; background:rgba(255,255,255,0.03) }
+    .muted{ color:var(--muted) }
+    .foot{ display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:18px }
+    a.link{ color:#cfe0ff }
+    details summary{cursor:pointer; color:#cfe0ff}
+    textarea{ width:100%; min-height:140px; background:#0f141d; color:var(--ink); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px; font: inherit }
+    .kbd{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background:#0e1420; border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:1px 6px; font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="card" id="screen-setup">
+      <h1>Kellogg Video Essay Practice (No Recording)</h1>
+      <p class="sub">Mimics the Kira flow: <strong>20s prep</strong> → <strong>60s answer</strong>, 3 random questions (or single). Nothing is recorded.</p>
+      <div class="row" style="margin:8px 0 16px">
+        <label class="toggle"><input type="checkbox" id="singleMode"> Single question only</label>
+        <span class="status">Default: session of 3.</span>
+        <span class="spacer"></span>
+        <button class="btn primary" id="startBtn">Start Practice</button>
+      </div>
+      <details>
+        <summary>✏️ Edit question bank (optional)</summary>
+        <p class="muted" style="margin:8px 0">One per line. Your edits apply only in this browser tab.</p>
+        <textarea id="questionEditor"></textarea>
+        <div class="foot">
+          <button class="btn" id="saveQuestions">Save Questions</button>
+          <span class="muted">Tip: Press <span class="kbd">Enter</span> to start from the main screen.</span>
+        </div>
+      </details>
+    </div>
+
+    <div class="card" id="screen-session" style="display:none">
+      <div class="row">
+        <div class="pill" id="pillProgress">Question 1 of 3</div>
+        <span class="spacer"></span>
+        <button class="btn ghost" id="abortBtn">Abort</button>
+      </div>
+      <div class="stage" style="margin-top:16px">
+        <div class="phase" id="phase">Get Ready</div>
+        <div class="question" id="questionText">—</div>
+        <div class="timer" id="timer">00:20</div>
+      </div>
+      <p class="sub" id="hint" style="margin-top:12px">Prep time. Think of structure (STAR). Recording is <strong>not</strong> happening.</p>
+    </div>
+
+    <div class="card" id="screen-end" style="display:none">
+      <h1>Session complete</h1>
+      <p class="sub">Review the questions you answered. Re-run to practice again.
+      </p>
+      <div class="grid" id="resultsGrid"></div>
+      <div class="foot">
+        <button class="btn primary" id="restartBtn">Start New Practice</button>
+        <span class="muted">Keyboard: <span class="kbd">Enter</span> can start from the home screen.</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  ;(() => {
+    // ======== Configuration (kept simple) ========
+    const PREP_SECONDS = 20;
+    const ANSWER_SECONDS = 60;
+    const DEFAULT_SESSION_COUNT = 3;
+
+    const DEFAULT_QUESTIONS = [
+      "Tell me about a time you led without formal authority.",
+      "Describe a situation where you persuaded a skeptical stakeholder.",
+      "Share a conflict on a team and how you handled it.",
+      "What is a significant professional failure and what changed afterward?",
+      "Tell me about a time you made a decision with incomplete data.",
+      "Describe a time you received feedback you disagreed with.",
+      "How did you balance competing priorities under tight deadlines?",
+      "Tell me about a time you adapted to unexpected change.",
+      "Share a time you mentored or developed someone else.",
+      "Describe impact you drove outside your formal role."
+    ];
+
+    // ======== DOM ========
+    const el = (id) => document.getElementById(id);
+    const screens = {
+      setup: el('screen-setup'),
+      session: el('screen-session'),
+      end: el('screen-end')
+    };
+    const startBtn = el('startBtn');
+    const singleMode = el('singleMode');
+    const abortBtn = el('abortBtn');
+    const restartBtn = el('restartBtn');
+    const pillProgress = el('pillProgress');
+    const questionText = el('questionText');
+    const timer = el('timer');
+    const phase = el('phase');
+    const hint = el('hint');
+    const resultsGrid = el('resultsGrid');
+
+    const questionEditor = el('questionEditor');
+    const saveQuestionsBtn = el('saveQuestions');
+
+    // ======== State ========
+    let allQuestions = [...DEFAULT_QUESTIONS];
+    let sessionQuestions = [];
+    let asked = [];
+    let idx = 0;
+    let interval = null;
+    let remaining = 0;
+
+    // Load editor with defaults
+    questionEditor.value = DEFAULT_QUESTIONS.join('\n');
+
+    function saveCustomQuestions(){
+      const raw = questionEditor.value.trim();
+      const list = raw.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+      allQuestions = list.length ? list : [...DEFAULT_QUESTIONS];
+      flash(hint, `Saved ${allQuestions.length} questions.`, 1600);
+    }
+
+    saveQuestionsBtn.addEventListener('click', saveCustomQuestions);
+
+    function show(screen){
+      Object.values(screens).forEach(s => s.style.display = 'none');
+      screens[screen].style.display = 'block';
+    }
+
+    // Fisher–Yates shuffle
+    function shuffle(arr){
+      const a = [...arr];
+      for(let i=a.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [a[i],a[j]] = [a[j],a[i]];
+      }
+      return a;
+    }
+
+    function startSession(){
+      asked = [];
+      idx = 0;
+      const wantsSingle = singleMode.checked;
+      const count = wantsSingle ? 1 : DEFAULT_SESSION_COUNT;
+      sessionQuestions = shuffle(allQuestions).slice(0, count);
+      updateProgress();
+      show('session');
+      nextQuestion();
+    }
+
+    function updateProgress(){
+      const total = sessionQuestions.length || (singleMode.checked ? 1 : DEFAULT_SESSION_COUNT);
+      pillProgress.textContent = `Question ${Math.min(idx+1,total)} of ${total}`;
+    }
+
+    function nextQuestion(){
+      updateProgress();
+      const q = sessionQuestions[idx];
+      questionText.textContent = q || '…';
+      phase.textContent = 'Prep';
+      hint.innerHTML = 'Prep time. Think structure: <strong>Situation → Task → Action → Result</strong>.';
+      startCountdown(PREP_SECONDS, () => {
+        phase.textContent = 'Answer';
+        hint.innerHTML = 'Answer time. Speak clearly; finish with your <strong>result/learning</strong>.';
+        startCountdown(ANSWER_SECONDS, () => {
+          asked.push({ q: q, when: new Date().toLocaleString() });
+          // Between-questions interstitial (2s), then move on or end.
+          interstitial(() => {
+            if(idx < sessionQuestions.length - 1){
+              idx++;
+              nextQuestion();
+            } else {
+              finishSession();
+            }
+          });
+        });
+      });
+    }
+
+    function startCountdown(seconds, onDone){
+      clearInterval(interval);
+      remaining = seconds;
+      renderTime(remaining);
+      interval = setInterval(() => {
+        remaining--;
+        renderTime(remaining);
+        if(remaining <= 0){
+          clearInterval(interval);
+          onDone && onDone();
+        }
+      }, 1000);
+    }
+
+    function renderTime(s){
+      const mm = String(Math.floor(s/60)).padStart(2,'0');
+      const ss = String(s%60).padStart(2,'0');
+      timer.textContent = `${mm}:${ss}`;
+      if(s <= 5){ timer.classList.add('danger'); } else { timer.classList.remove('danger'); }
+    }
+
+    function interstitial(next){
+      phase.textContent = 'Next question coming…';
+      hint.textContent = 'Shake it off. Quick reset.';
+      let s = 2;
+      renderTime(s);
+      clearInterval(interval);
+      interval = setInterval(()=>{
+        s--; renderTime(s);
+        if(s<=0){ clearInterval(interval); next(); }
+      }, 1000);
+    }
+
+    function finishSession(){
+      clearInterval(interval);
+      buildResults();
+      show('end');
+    }
+
+    function buildResults(){
+      resultsGrid.innerHTML = '';
+      asked.forEach((item, i) => {
+        const div = document.createElement('div');
+        div.className = 'tile';
+        div.innerHTML = `
+          <div class="muted" style="font-size:12px; text-transform:uppercase; letter-spacing:.14em">Question ${i+1}</div>
+          <div style="margin:6px 0 8px; font-weight:600">${escapeHtml(item.q)}</div>
+          <div class="muted" style="font-size:12px">Practiced: ${item.when}</div>
+        `;
+        resultsGrid.appendChild(div);
+      });
+      if(asked.length === 0){
+        const empty = document.createElement('div');
+        empty.className = 'tile';
+        empty.innerHTML = '<div class="muted">No questions recorded for this session.</div>';
+        resultsGrid.appendChild(empty);
+      }
+    }
+
+    function abortSession(){
+      clearInterval(interval);
+      asked = [];
+      timer.textContent = '00:00';
+      show('setup');
+      flash(startBtn, 'Aborted', 1000);
+    }
+
+    function flash(node, text, ms=1200){
+      const prev = hint.textContent;
+      const old = hint.innerHTML;
+      hint.textContent = text;
+      setTimeout(()=>{ hint.innerHTML = old; }, ms);
+    }
+
+    function escapeHtml(str){
+      return str.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+    }
+
+    // ======== Events ========
+    startBtn.addEventListener('click', startSession);
+    abortBtn.addEventListener('click', abortSession);
+    restartBtn.addEventListener('click', () => { show('setup'); });
+
+    // Keyboard: Enter starts from setup screen
+    document.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter'){
+        if(screens.setup.style.display !== 'none'){
+          e.preventDefault();
+          startSession();
+        }
+      }
+    });
+
+    // Start on setup
+    show('setup');
+  })();
+  </script>
+</body>
+</html>
