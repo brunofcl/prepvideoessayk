@@ -33,6 +33,13 @@
     .toggle input{ accent-color:var(--accent); width:18px; height:18px }
     .status{ font-size:14px; color:var(--muted) }
 
+    /* Simple select styling to match the UI */
+    .select{
+      appearance:none; background:#1a2232; color:var(--ink);
+      border:1px solid rgba(255,255,255,0.14); border-radius:12px;
+      padding:10px 12px; font-weight:600; cursor:pointer;
+    }
+
     /* === Stage & typography tweaks === */
     .stage{
       display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -72,12 +79,32 @@
       <h1>Kellogg Video Essay Practice</h1>
       <p class="sub"></p>
       <div class="row" style="margin:8px 0 16px">
-        <label class="toggle"><input type="checkbox" id="singleMode"> Single question only</label>
-        <label class="toggle"><input type="checkbox" id="startWithCV"> Start with "not on CV" question</label>
-        <span class="status">Default: session of 3.</span>
-        <span class="spacer"></span>
-        <button class="btn primary" id="startBtn">Start Practice</button>
-      </div>
+  <!-- Number of questions dropdown -->
+  <label class="toggle" style="gap:8px">
+    <span>Number of questions</span>
+    <select id="questionCount" class="select">
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3" selected>3 (default)</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+      <option value="6">6</option>
+      <option value="7">7</option>
+      <option value="8">8</option>
+      <option value="9">9</option>
+      <option value="10">10</option>
+    </select>
+  </label>
+
+  <label class="toggle"><input type="checkbox" id="startWithCV"> Start with "not on CV" question</label>
+
+  <!-- Remove this line:
+  <span class="status">Default: session of 3.</span>
+  -->
+
+  <span class="spacer"></span>
+  <button class="btn primary" id="startBtn">Start Practice</button>
+</div>
       <details>
         <summary>✏️ Edit question bank (optional)</summary>
         <p class="muted" style="margin:8px 0">One per line. Your edits apply only in this browser tab.</p>
@@ -166,7 +193,7 @@
     end: el('screen-end')
   };
   const startBtn = el('startBtn');
-  const singleMode = el('singleMode');
+  const questionCount = el('questionCount');
   const startWithCV = el('startWithCV');
   const skipBtn = el('skipBtn');
   const quitBtn = el('quitBtn');
@@ -221,13 +248,18 @@
     return a;
   }
 
+  function getDesiredCount(){
+    const raw = (questionCount && questionCount.value) ? parseInt(questionCount.value, 10) : DEFAULT_SESSION_COUNT;
+    if (Number.isNaN(raw)) return DEFAULT_SESSION_COUNT;
+    return Math.max(1, Math.min(10, raw));
+  }
+
   function startSession(){
     asked = [];
     idx = 0;
 
-    const wantsSingle = !!singleMode?.checked;
+    const count = getDesiredCount();
     const forceCV = !!startWithCV?.checked;
-    const count = wantsSingle ? 1 : DEFAULT_SESSION_COUNT;
 
     if (forceCV) {
       const restPool = allQuestions.filter(q => q.trim() !== FIXED_CV_QUESTION);
@@ -244,7 +276,7 @@
   }
 
   function updateProgress(){
-    const total = sessionQuestions.length || (singleMode?.checked ? 1 : DEFAULT_SESSION_COUNT);
+    const total = sessionQuestions.length;
     pillProgress.textContent = `Question ${Math.min(idx+1,total)} of ${total}`;
   }
 
